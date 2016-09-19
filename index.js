@@ -1,5 +1,6 @@
 express = require('express');    /* outdated in tutorial */
 app = express();
+crypto = require('crypto');
 var http = require('http').Server(app);
 var io = require('socket.io')(http);
 //var fs = require('fs');
@@ -26,13 +27,19 @@ app.get('/icq.ogg', function (req, res) {
 io.on('connection', function(socket){
 	console.log('a user connected');
 	//console.log(socket.client.request.headers);
-	console.log(socket.handshake.address);
+	console.log(socket.handshake);
+
+	if ( typeof socket.handshake.usercode === "undefined") {
+		crypto.randomBytes(48, function( erro, buffer) {
+			socket.handshake.usercode = buffer.toString('hex');
+		});
+	}
 
 
-	var nick = users[socket.handshake.address];
+	var nick = users[socket.handshake.usercode];
 	if (nick) {
 		socket.handshake.nickname = nick;
-		console.log(socket.handshake.address + ' logged in as ' + nick);
+		console.log(socket.handshake.usercode + ' logged in as ' + nick);
 		io.sockets.connected[socket.id].emit('iknowyou', nick); //Send to specific user
 		io.emit('chat message', nick + ' is back');   //socket emit manda pra o usuario em questao!
 	} else {
@@ -88,7 +95,7 @@ io.on('connection', function(socket){
 			var oldNick = socket.handshake.nickname;
 		}
 		socket.handshake.nickname = nick;
-		users[socket.handshake.address] = socket.handshake.nickname;
+		users[socket.handshake.usercode] = socket.handshake.nickname;
 		if (oldNick != undefined){
 			console.log(oldNick + ' is now known as ' + nick);
 			io.emit('chat message', oldNick + ' is now known as ' + nick);
